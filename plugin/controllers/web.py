@@ -31,7 +31,7 @@ from .models.control import zapService, remoteControl, setPowerState, getStandby
 from .models.locations import getLocations, getCurrentLocation, addLocation, removeLocation
 from .models.timers import getTimers, addTimer, addTimerByEventId, editTimer, removeTimer, toggleTimerStatus, cleanupTimer, writeTimerList, recordNow, tvbrowser, getSleepTimer, setSleepTimer, getPowerTimer, setPowerTimer, getVPSChannels
 from .models.message import sendMessage, getMessageAnswer
-from .models.movies import getMovieList, removeMovie, getMovieInfo, movieAction, getAllMovies, getMovieDetails, MOVIETAGFILE
+from .models.movies import getMovieList, removeMovie, getMovieInfo, movieAction, getAllMovies, getMovieDetails, setMovieResumePoint, MOVIETAGFILE
 from .models.config import getSettings, addCollapsedMenu, removeCollapsedMenu, saveConfig, getConfigs, getConfigsSections, getUtcOffset
 from .models.stream import getStream, getTS, getStreamSubservices, GetSession
 from .models.servicelist import reloadServicesLists
@@ -490,8 +490,9 @@ class WebController(BaseController):
 		excludevod = "vod" in excludes
 		excludeiptv = "iptv" in excludes
 		excludelastscanned = "lastscanned" in excludes
+		showstreamrelay = True if getUrlArg(request, "showstreamrelay", "0") in ("1", "true") else False
 
-		bouquets = getAllServices(mode, noiptv=noiptv or excludeiptv, nolastscanned=nolastscanned or excludelastscanned, removenamefromsref=removenamefromsref, showall=showall, showproviders=showproviders, excludeprogram=excludeprogram, excludevod=excludevod)
+		bouquets = getAllServices(mode, noiptv=noiptv or excludeiptv, nolastscanned=nolastscanned or excludelastscanned, removenamefromsref=removenamefromsref, showall=showall, showproviders=showproviders, excludeprogram=excludeprogram, excludevod=excludevod, showstreamrelay=showstreamrelay)
 		if b"renameserviceforxmbc" in list(request.args.keys()):
 			for bouquet in bouquets["services"]:
 				for service in bouquet["subservices"]:
@@ -521,7 +522,10 @@ class WebController(BaseController):
 			showproviders = True
 		picon = True if getUrlArg(request, "picon", "0") in ("1", "true") else False
 		removenamefromsref = True if getUrlArg(request, "removenamefromsref", "0") in ("1", "true") else False
-		return getServices(sref=sref, showall=True, showhidden=hidden, showproviders=showproviders, picon=picon, removenamefromsref=removenamefromsref)
+		showstreamrelay = True if getUrlArg(request, "showstreamrelay", "0") in ("1", "true") else False
+		noiptv = True if getUrlArg(request, "noiptv", "0") in ("1", "true") else False
+		showall = False if getUrlArg(request, "showall", "1") in ("0", "false") else True
+		return getServices(sref=sref, showall=showall, showhidden=hidden, showproviders=showproviders, picon=picon, removenamefromsref=removenamefromsref, noiptv=noiptv, showstreamrelay=showstreamrelay)
 
 	def P_servicesxspf(self, request):
 		"""
@@ -1001,8 +1005,24 @@ class WebController(BaseController):
 				"result": False
 			}
 
-	# a duplicate api ??
-	def P_gettags(self, request):
+	def P_movieresumepoint(self, request):
+		sref = getUrlArg(request, "sRef")
+		if sref is None:
+			sref = getUrlArg(request, "sref")
+
+		try:
+			resumepoint = int(request.args[b"resumepoint"][0]) * 90000  # in seconds
+		except (ValueError, KeyError):  # nosec # noqa: E722
+			resumepoint = None
+
+		if sref and resumepoint:
+			return setMovieResumePoint(sref, resumepoint)
+		else:
+			return {
+				"result": False
+			}
+
+	def P_gettags(self, request):  # a duplicate api ??
 		"""
 		Request handler for the `gettags` endpoint.
 		Get tags of movie file (?).
@@ -1604,7 +1624,8 @@ class WebController(BaseController):
 			return res
 		bref = getUrlArg(request, "bRef")
 		showisplayable = getUrlArg(request, "showIsPlayable") is not None
-		ret = getBouquetNowNextEpg(bref, nowornext, self.isJson, showisplayable)
+		showstreamrelay = True if getUrlArg(request, "showstreamrelay", "0") in ("1", "true") else False
+		ret = getBouquetNowNextEpg(bref, nowornext, self.isJson, showisplayable=showisplayable, showstreamrelay=showstreamrelay)
 		if nowornext == EPG.NOW_NEXT:
 			info = getCurrentService(self.session)
 			ret["info"] = info

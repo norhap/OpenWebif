@@ -492,7 +492,7 @@ def getChannels(idbouquet, stype):
 	return {"channels": ret}
 
 
-def getServices(sref, showall=True, showhidden=False, pos=0, showproviders=False, picon=False, noiptv=False, removenamefromsref=False, excludeprogram=False, excludevod=False):
+def getServices(sref, showall=True, showhidden=False, pos=0, showproviders=False, picon=False, noiptv=False, removenamefromsref=False, excludeprogram=False, excludevod=False, showstreamrelay=False):
 	starttime = datetime.now()
 	services = []
 	allproviders = {}
@@ -517,6 +517,14 @@ def getServices(sref, showall=True, showhidden=False, pos=0, showproviders=False
 			slist = pservices and pservices.getContent("CN" if removenamefromsref else "SN", True)
 			for sitem in slist:
 				allproviders[sitem[0]] = provider[1]
+
+	streamRelay = []
+	if showstreamrelay:
+		try:
+			with open("/etc/enigma2/whitelist_streamrelay") as fd:
+				streamRelay = [line.strip() for line in fd.readlines()]
+		except OSError:
+			pass
 
 	bqservices = servicehandler.list(eServiceReference(sref))
 	slist = bqservices and bqservices.getContent("CN" if removenamefromsref else "SN", True)
@@ -575,6 +583,8 @@ def getServices(sref, showall=True, showhidden=False, pos=0, showproviders=False
 					lcn = LCNDB.get(lcnref, "")
 					if lcn:
 						service['lcn'] = lcn
+			if showstreamrelay:
+				service['streamrelay'] = sr in streamRelay
 
 			services.append(service)
 
@@ -587,7 +597,7 @@ def getServices(sref, showall=True, showhidden=False, pos=0, showproviders=False
 	}
 
 
-def getAllServices(mode, noiptv=False, nolastscanned=False, removenamefromsref=False, showall=True, showproviders=False, excludeprogram=False, excludevod=False):
+def getAllServices(mode, noiptv=False, nolastscanned=False, removenamefromsref=False, showall=True, showproviders=False, excludeprogram=False, excludevod=False, showstreamrelay=False):
 	starttime = datetime.now()
 	services = []
 	if mode is None:
@@ -597,7 +607,7 @@ def getAllServices(mode, noiptv=False, nolastscanned=False, removenamefromsref=F
 	for bouquet in bouquets:
 		if nolastscanned and 'LastScanned' in bouquet[0]:
 			continue
-		sv = getServices(sref=bouquet[0], showall=showall, showhidden=False, pos=pos, showproviders=showproviders, noiptv=noiptv, removenamefromsref=removenamefromsref, excludeprogram=excludeprogram, excludevod=excludevod)
+		sv = getServices(sref=bouquet[0], showall=showall, showhidden=False, pos=pos, showproviders=showproviders, noiptv=noiptv, removenamefromsref=removenamefromsref, excludeprogram=excludeprogram, excludevod=excludevod, showstreamrelay=showstreamrelay)
 		services.append({
 			"servicereference": bouquet[0],
 			"servicename": bouquet[1],
@@ -838,7 +848,7 @@ def getMultiChannelNowNextEpg(slist, encode=False):
 	return {"events": events, "result": True}
 
 
-def getBouquetNowNextEpg(bqref, nowornext, encode=False, showisplayable=False):
+def getBouquetNowNextEpg(bqref, nowornext, encode=False, showisplayable=False, showstreamrelay=False):
 	bqref = unquote(bqref)
 	services = eServiceCenter.getInstance().list(eServiceReference(bqref))
 	if not services:
@@ -889,6 +899,15 @@ def getBouquetNowNextEpg(bqref, nowornext, encode=False, showisplayable=False):
 				query.append((service, nowornext, -1))
 
 	epg = EPG()
+	streamRelay = []
+	if showstreamrelay:
+		try:
+			with open("/etc/enigma2/whitelist_streamrelay") as fd:
+				streamRelay = [line.strip() for line in fd.readlines()]
+		except OSError:
+			pass
+	epg.streamRelay = streamRelay
+
 	events = epg.getBouquetNowNextEpg(query, encode, alter=True, full=True)
 
 	return {"events": events, "isplayable": isPlayable, "result": True}

@@ -1,7 +1,7 @@
 ##########################################################################
 # OpenWebif: services
 ##########################################################################
-# Copyright (C) 2011 - 2024 E2OpenPlugins, jbleyel
+# Copyright (C) 2011 - 2025 E2OpenPlugins, jbleyel
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -97,7 +97,8 @@ def getCurrentService(session):
 			"ref": quote(ref, safe=' ~@#$&()*!+=:;,.?/\''),
 			"iswidescreen": info.getInfo(iServiceInformation.sAspect) in (3, 4, 7, 8, 0xB, 0xC, 0xF, 0x10),
 			"bqref": quote(bqref, safe=' ~@#$&()*!+=:;,.?/\''),
-			"bqname": bqname
+			"bqname": bqname,
+			"hbbtvurl": info.getInfoString(iServiceInformation.sHBBTVUrl)
 		}
 	except Exception as e:
 		print(str(e))
@@ -120,7 +121,8 @@ def getCurrentService(session):
 			"ref": "",
 			"iswidescreen": False,
 			"bqref": "",
-			"bqname": ""
+			"bqname": "",
+			"hbbtvurl": ""
 		}
 
 
@@ -423,8 +425,6 @@ def getChannels(idbouquet, stype):
 		if chan['ref'].split(":")[1] == '320':  # Hide hidden number markers
 			continue
 		chan['name'] = filterName(channel[1])
-		if chan['ref'].split(":")[0] == '5002':  # BAD fix !!! this needs to fix in enigma2 !!!
-			chan['name'] = chan['ref'].split(":")[-1]
 		# IPTV
 		ref = chan['ref']
 		isStreamRelay = f"%3a{streamrelayport}/" in ref

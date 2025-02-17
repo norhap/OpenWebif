@@ -145,12 +145,23 @@ def refreshPiconPath():
 
 
 def getIP():
-	ifaces = iNetwork.getConfiguredAdapters()
-	if len(ifaces):
-		ip_list = iNetwork.getAdapterAttribute(ifaces[0], "ip")  # use only the first configured interface
-		if ip_list:
-			return f"{ip_list[0]}.{ip_list[1]}.{ip_list[2]}.{ip_list[3]}"
-	return None
+	from netifaces import AF_INET, ifaddresses
+	ip = "0.0.0.0"
+	for ifaces in iNetwork.getInstalledAdapters():
+		nit = ifaddresses(ifaces)
+		if ifaces.startswith("wlan"):
+			try:
+				ip = nit[AF_INET][0]["addr"]
+				return ip
+			except Exception:
+				continue
+		if ifaces.startswith("eth"):
+			try:
+				ip = nit[AF_INET][0]["addr"]
+				return ip
+			except Exception:
+				break
+	return ip
 
 
 PICON_PATH = getPiconPath()

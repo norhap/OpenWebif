@@ -624,6 +624,39 @@ def getAllServices(mode, noiptv=False, nolastscanned=False, removenamefromsref=F
 	}
 
 
+def getAllServicesRaw(mode, csv=False):
+	starttime = datetime.now()
+	services = []
+	servicecenter = eServiceCenter.getInstance()
+
+	if mode == "radio":
+		refStr = "1:7:2:0:0:0:0:0:0:0:(type == 2) || (type == 10) ORDER BY name"
+	elif mode == "tv":
+		refStr = "1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) || (type == 22) || (type == 31) || (type == 211) ORDER BY name"
+	else:
+		refStr = "1:7:0:0:0:0:0:0:0:0:(type == 2) || (type == 10) || (type == 1) || (type == 17) || (type == 195) || (type == 25) || (type == 22) || (type == 31) || (type == 211)  ORDER BY name"
+	servicelist = servicecenter.list(eServiceReference(refStr))
+	servicelist = servicelist and servicelist.getContent('SN') or []
+	if csv:
+		services.append("\"ServiceRefrerence\",\"ServiceName\"")
+		for service in servicelist:
+			services.append(f"\"{service[0]}\",\"{service[1]}\"")
+		return "\n".join(services)
+	else:
+		for service in servicelist:
+			service2 = {}
+			service2['servicereference'] = service[0]
+			service2['servicename'] = service[1]
+			services.append(service2)
+
+	timeelapsed = datetime.now() - starttime
+	return {
+		"result": True,
+		"processingtime": f"{timeelapsed}",
+		"services": services
+	}
+
+
 def getPlayableServices(sref, srefplaying):
 	if sref == "":
 		sref = f'{service_types_tv} FROM BOUQUET "bouquets.tv" ORDER BY bouquet'

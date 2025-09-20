@@ -244,7 +244,7 @@ def getATSearchtypes():
 
 def getTextInputSupport():
 	try:
-		from enigma import setPrevAsciiCode
+		from enigma import setPrevAsciiCode  # noqa: F401
 		return True
 	except ImportError:
 		return False

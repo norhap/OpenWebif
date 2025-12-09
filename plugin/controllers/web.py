@@ -72,6 +72,7 @@ class WebController(BaseController):
 		self.putChild(b"stream", StreamController(session))
 
 	def prePageLoad(self, request):
+		request.setHeader("Access-Control-Allow-Origin", "*")
 		request.setHeader("content-type", "text/xml")
 
 	def testMandatoryArguments(self, request, keys):
@@ -2323,7 +2324,8 @@ class WebController(BaseController):
 
 		return {
 			"result": True,
-			"message": "EPG data saved"
+			"message": "EPG data saved",
+			"path": comp_config.misc.epgcache_filename.value
 		}
 
 	def P_loadepg(self, request):
@@ -2560,4 +2562,5 @@ class ApiController(WebController):
 		WebController.__init__(self, session, path)
 
 	def prePageLoad(self, request):
+		request.setHeader("Access-Control-Allow-Origin", "*")
 		self.isJson = True

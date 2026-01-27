@@ -1152,6 +1152,9 @@ class WebController(BaseController):
 
 		sref = getUrlArg(request, "sRef")
 
+		# Fix for URLs containing http:// or https://
+		sref = sref.replace("https://", "https%3a//").replace("http://", "http%3a//")
+
 		eit = 0
 		if mode == 1:
 			try:

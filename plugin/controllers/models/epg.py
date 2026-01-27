@@ -158,7 +158,7 @@ class EPG():
 		criteria = (SEARCH_FIELDS, MAX_RESULTS, querytype, querystring, CASE_INSENSITIVE_QUERY)
 		return self._instance.search(criteria)
 
-	def getChannelEvents(self, sref, starttime, endtime, encode, picon, nownext):
+	def getChannelEvents(self, sref, fullsref, starttime, endtime, encode, picon, nownext):
 		if not sref:
 			error("A required parameter 'sRef' is missing!", "EPG")
 			return []
@@ -167,7 +167,7 @@ class EPG():
 
 		self.doencode = encode
 		self.currentpicon = picon
-		self.currentsref = sref
+		self.currentsref = fullsref
 		if nownext:
 			criteria = [SINGLE_CHANNEL_FIELDS_NN]
 			criteria.append((sref, NOW_EVENT, -1))

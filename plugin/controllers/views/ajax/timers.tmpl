@@ -38,7 +38,7 @@
 			<div class="tm_row ui-widget-content ui-state-default" id="$timer.begin-$timer.end">
 				<div class="t_buttons tm_buttons">
 						<div>
-						#set $sref=quote($timer.serviceref, safe=' ~@#$&()*!+=:;,.?/\'')
+						#set $sref=quote($timer.serviceref, safe=' ~@#$()*!+=:;,.?/\'')
 						#set $tname=quote($timer.name)
 						<a href='#' onclick="editTimer('$sref', '$timer.begin', '$timer.end');" title="$tstrings['edit_timer']"><div><i class="fa fa-edit"></i></div></a>
 						<a href='#' onclick="deleteTimer('$sref', '$timer.begin', '$timer.end', '$tname');" title="$tstrings['delete_timer']"><div><i class="fa fa-trash-o"></i></div></a>

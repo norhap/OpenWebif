@@ -40,7 +40,7 @@ class renderEvtBlock:
 		else:
 			shortdesc = ''
 
-		sref = quote(event['ref'], safe=' ~@#$&()*!+=:;,.?/\'')
+		sref = quote(event['ref'], safe=' ~@#$()*!+=:;,.?/\'')
 
 		return self.template % (
 			event['id'],

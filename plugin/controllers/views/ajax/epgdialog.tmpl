@@ -28,7 +28,7 @@ table { font-size:12px; font-family: Verdana,Arial,sans-serif;}
 #for $event in $events
 		#set $channel = $event.sname.replace("'", r"\'")
 		#set $title = $event.title.replace("'", r"\'")
-		#set $sref=quote($event.sref, safe=' ~@#$&()*!+=:;,.?/\'')
+		#set $sref=quote($event.sref, safe=' ~@#$()*!+=:;,.?/\'')
 
 	<tbody data-id='$sref;$event.begin_timestamp;$event.duration'>
 	<tr class="eft">

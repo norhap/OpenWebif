@@ -3,7 +3,7 @@
 #set $etime = time.localtime($event.begin)
 #set $channel = $event.channel.replace("'", r"\'")
 #set $title = $event.title.replace("'", r"\'")
-#set $sref=quote($event.sref, safe=' ~@#$&()*!+=:;,.?/\'')
+#set $sref=quote($event.sref, safe=' ~@#$()*!+=:;,.?/\'')
 #from Plugins.Extensions.OpenWebif.controllers.i18n import tstrings
 
 <style>

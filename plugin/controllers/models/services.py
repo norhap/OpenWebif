@@ -103,7 +103,7 @@ def getCurrentService(session):
 			"tsid": getServiceInfoString(info, iServiceInformation.sTSID),
 			"onid": getServiceInfoString(info, iServiceInformation.sONID),
 			"sid": getServiceInfoString(info, iServiceInformation.sSID),
-			"ref": quote(ref, safe=' ~@#$&()*!+=:;,.?/\''),
+			"ref": quote(ref, safe=' ~@#$()*!+=:;,.?/\''),
 			"iswidescreen": info.getInfo(iServiceInformation.sAspect) in (3, 4, 7, 8, 0xB, 0xC, 0xF, 0x10),
 			"bqref": quote(bqref, safe=' ~@#$&()*!+=:;,.?/\''),
 			"bqname": bqname,
@@ -428,7 +428,7 @@ def getChannels(idbouquet, stype):
 	for channel in channels:
 		index = index + 2  # each channel has a `now` and a `next` event entry
 		chan = {
-			'ref': quote(channel[0], safe=' ~@%#$&()*!+=:;,.?/\'')
+			'ref': quote(channel[0], safe=' ~@%#$()*!+=:;,.?/\'')
 		}
 
 		if chan['ref'].split(":")[1] == '320':  # Hide hidden number markers
@@ -811,7 +811,7 @@ def getChannelEpg(ref, begintime=-1, endtime=-1, encode=True, nownext=False):
 
 		picon = getPicon(_ref)
 		epg = EPG()
-		events = epg.getChannelEvents(_ref, begintime, endtime, encode, picon, nownext)
+		events = epg.getChannelEvents(_ref, ref, begintime, endtime, encode, picon, nownext)
 		if events:
 			return {"events": events, "result": True}
 # TODO do we need this?

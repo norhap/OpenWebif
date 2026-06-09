@@ -1,3 +1,15 @@
+## Version 2.3.1
+* add compact timer list
+
+## Version 2.3.0
+* add config batch save feature with Save button
+* add new /api/saveconfigbatch endpoint for batch configuration updates via JSON
+* improve configuration save handling with single batch request instead of individual requests
+* add saveAllConfig() JavaScript function for efficient multi-config saves
+* add multiboot support
+* add scripts support
+* fix autotimer selection
+
 ## Version 2.2.4
 * improve IPTV
 

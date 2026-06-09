@@ -250,33 +250,56 @@ FIXME : complete reorg header
 	display: inline-block;
 }
 
+.buttonGrid
+{
+	text-align: center;
+}
+
+.buttonGrid ul {
+	list-style: none;
+	padding: 0;
+}
+
+.buttonGrid li {
+	text-align: center;
+	cursor: pointer;
+}
+
+.buttonGrid li:hover {
+	border: 1px solid #000000;
+}
+
 .powerStateButtons
 {
 	width: 250px;
 	margin-top: 20px;
 	margin-left: auto;
 	margin-right: auto;
-	text-align: center;
-}
-
-.powerStateButtons ul {
-	list-style: none;
-	padding: 0;
 }
 
 .powerStateButtons li {
 	margin-top: 10px;
 	width: 220px;
-	line-height: 40px;
-	text-align: center;
+	line-height: 24px;
 	font-size: 18px;
-	cursor: pointer;
 }
 
-.powerStateButtons li:hover {
-	border: 1px solid #000000;
+.multibootButtons
+{
+	margin: 0;
 }
 
+.multibootButtons ul {
+	margin: 0;
+}
+
+.multibootButtons li {
+	margin-top: 8px;
+	width: 100%;
+	font-size: 12px;
+	padding: 8px 12px;
+	box-sizing: border-box;
+}
 
 .moviecontainer_left {
 	float: left;

@@ -33,7 +33,7 @@ from .models.locations import getLocations, getCurrentLocation, addLocation, rem
 from .models.timers import getTimers, addTimer, addTimerByEventId, editTimer, removeTimer, toggleTimerStatus, cleanupTimer, writeTimerList, recordNow, tvbrowser, getSleepTimer, setSleepTimer, getPowerTimer, setPowerTimer, getVPSChannels
 from .models.message import sendMessage, getMessageAnswer
 from .models.movies import getMovieList, removeMovie, getMovieInfo, movieAction, getAllMovies, getMovieDetails, setMovieResumePoint, MOVIETAGFILE
-from .models.config import getSettings, addCollapsedMenu, removeCollapsedMenu, saveConfig, saveConfigBatch, getConfigs, getConfigsSections
+from .models.config import cancelConfigBatch, getSettings, addCollapsedMenu, removeCollapsedMenu, saveConfig, saveConfigBatch, getConfigs, getConfigsSections
 from .models.stream import getStream, getTS, getStreamSubservices, GetSession
 from .models.servicelist import reloadServicesLists
 from .models.mediaplayer import mediaPlayerAdd, mediaPlayerRemove, mediaPlayerPlay, mediaPlayerCommand, mediaPlayerCurrent, mediaPlayerList, mediaPlayerLoad, mediaPlayerSave, mediaPlayerFindFile
@@ -43,7 +43,7 @@ from .i18n import _
 from .base import BaseController
 from .stream import StreamController
 from .utilities import getUrlArg, toBinary, toString
-from .defaults import PICON_PATH
+from .defaults import globalVars
 from .models.epg import EPG
 
 
@@ -459,8 +459,21 @@ class WebController(BaseController):
 		return getCurrentLocation()
 
 	def P_allservicescsv(self, request):
+		request.setHeader('Content-Disposition', 'inline; filename=allservices.csv')
 		mode = getUrlArg(request, "mode", "all")
-		return getAllServicesRaw(mode, csv=True)
+		raw = getAllServicesRaw(mode, csv=True)
+		# Prepend UTF-8 BOM so Excel detects the encoding correctly instead
+		# of misreading non-ASCII names as cp1252 (e.g. "BBC RnGàid")
+		return "\ufeff" + raw
+
+	def P_allservicescsvalphabetical(self, request):
+		"""allservicescsvalphabetical: Name, Service ref, Service type, SID, TSID, Orbital position — sorted by name."""
+		request.setHeader('Content-Disposition', 'inline; filename=allservices_alphabetical.csv')
+		mode = getUrlArg(request, "mode", "all")
+		raw = getAllServicesRaw(mode, csv=True, alphabetical=True)
+		# Prepend UTF-8 BOM so Excel detects the encoding correctly instead
+		# of misreading non-ASCII names as cp1252 (e.g. "BBC RnGàid")
+		return "\ufeff" + raw
 
 	def P_allservices(self, request):
 		mode = getUrlArg(request, "mode", "all")
@@ -656,7 +669,8 @@ class WebController(BaseController):
 		"""
 		sref = getUrlArg(request, "sRef", "")
 		srefplaying = getUrlArg(request, "sRefPlaying", "")
-		return getPlayableServices(sref, srefplaying)
+		includeName = getUrlArg(request, "includeName", "") != ""
+		return getPlayableServices(sref, srefplaying, includeName)
 
 	def P_serviceplayable(self, request):
 		"""
@@ -1165,8 +1179,14 @@ class WebController(BaseController):
 					"result": False,
 					"message": "The parameter 'eventid' must be a number"
 				}
-		elif b"eit" in list(request.args.keys()) and isinstance(request.args[b"eit"][0], int):
-			eit = int(request.args[b"eit"][0])
+		elif b"eit" in request.args:
+			try:
+				eit = int(request.args[b"eit"][0])
+			except (TypeError, ValueError):
+				return {
+					"result": False,
+					"message": "The parameter 'eit' must be a number"
+				}
 		else:
 			# This might need further investigation. Do not get exactly the middle, take 20% so we usually expect to get first event.
 			queryTime = int(request.args[b"begin"][0]) + (int(request.args[b"end"][0]) - int(request.args[b"begin"][0])) // 5
@@ -1936,6 +1956,29 @@ class WebController(BaseController):
 			return res
 		return removeCollapsedMenu(getUrlArg(request, "name"))
 
+	def P_streamhlsm3u(self, request):
+		self.isCustom = True
+		ref = getUrlArg(request, "ref")
+		name = getUrlArg(request, "name", "")
+		zap = getUrlArg(request, "zap", "")
+		if ref and zap:
+			zapService(self.session, ref, name, stream=True)
+		stream = getStream(self.session, request, "streamhls.m3u")
+		if stream.startswith("http://") or stream.startswith("https://"):
+			request.setResponseCode(307)
+			request.setHeader("Location", stream)
+			return b""
+		return None
+
+	def P_streamnewm3u(self, request):
+		self.isCustom = True
+		if comp_config.OpenWebif.webcache.zapstream.value:
+			ref = getUrlArg(request, "ref")
+			if ref:
+				name = getUrlArg(request, "name", "")
+				zapService(self.session, ref, name, stream=True)
+		return getStream(self.session, request, "streamnew.m3u")
+
 	def P_streamm3u(self, request):
 		"""
 		Request handler for the `streamm3u` endpoint.
@@ -2068,6 +2111,17 @@ class WebController(BaseController):
 		"""
 		return tvbrowser(self.session, request)
 
+	def _saveConfig(self, request, save=False):
+		if request.method == b'POST':
+			res = self.testMandatoryArguments(request, ["key"])
+			if res:
+				return res
+			value = getUrlArg(request, "value")
+			if value:
+				key = getUrlArg(request, "key")
+				return saveConfig(key, value, save)
+		return {"result": False}
+
 	def P_saveconfig(self, request):
 		"""
 		Request handler for the `saveconfig` endpoint.
@@ -2086,15 +2140,65 @@ class WebController(BaseController):
 			:query string key: configuration key
 			:query string value: configuration value
 		"""
+		return self._saveConfig(request, True)
+
+	def P_updateconfig(self, request):
+		"""
+		Request handler for the `updateconfig` endpoint.
+
+		.. note::
+
+			Not available in *Enigma2 WebInterface API*.
+
+		Args:
+			request (twisted.web.server.Request): HTTP request object
+		Returns:
+			HTTP response with headers
+
+		.. http:post:: /web/updateconfig
+
+			:query string key: configuration key
+			:query string value: configuration value
+		"""
+		return self._saveConfig(request, False)
+
+	def P_cancelconfigbatch(self, request):
+		"""
+		Request handler for the `cancelconfigbatch` endpoint.
+		Cancels a batch configuration save operation.
+
+		.. note::
+
+			Not available in *Enigma2 WebInterface API*.
+
+		Args:
+			request (twisted.web.server.Request): HTTP request object
+		Returns:
+			HTTP response with batch save result
+
+		.. http:post:: /web/cancelconfigbatch
+
+			:query string configs: JSON string with configuration key-value pairs
+			Example: {"config.usage.setup_level": "1", "config.misc.useHDMICEC": "true"}
+		"""
+
+		message = "Invalid request method"
 		if request.method == b'POST':
-			res = self.testMandatoryArguments(request, ["key"])
-			if res:
-				return res
-			value = getUrlArg(request, "value")
-			if value:
-				key = getUrlArg(request, "key")
-				return saveConfig(key, value)
-		return {"result": False}
+			try:
+				keys_json = getUrlArg(request, "keys", "")
+				section = getUrlArg(request, "section", "")
+				if keys_json:
+					try:
+						keys = loads(keys_json)
+						return cancelConfigBatch(keys, section)
+					except JSONDecodeError:
+						message = "Invalid JSON format"
+				else:
+					message = "No keys provided"
+			except Exception as e:
+				print(f"[OpenWebif] P_cancelconfigbatch Error: {e}")
+				message = "Error processing batch config cancel"
+		return {"result": False, "message": message}
 
 	def P_saveconfigbatch(self, request):
 		"""
@@ -2119,15 +2223,16 @@ class WebController(BaseController):
 		message = "Invalid request method"
 		if request.method == b'POST':
 			try:
-				configs_json = getUrlArg(request, "configs", "")
-				if configs_json:
+				keys_json = getUrlArg(request, "keys", "")
+				section = getUrlArg(request, "section", "")
+				if keys_json:
 					try:
-						configs_dict = loads(configs_json)
-						return saveConfigBatch(configs_dict)
+						keys = loads(keys_json)
+						return saveConfigBatch(keys, section)
 					except JSONDecodeError:
 						message = "Invalid JSON format"
 				else:
-					message = "No configurations provided"
+					message = "No keys provided"
 			except Exception as e:
 				print(f"[OpenWebif] P_saveconfigbatch Error: {e}")
 				message = "Error processing batch config save"
@@ -2497,13 +2602,13 @@ class WebController(BaseController):
 		args = list(request.args.keys())
 		for arg in args:
 			sarg = toString(arg)
-			if sarg in ("minmovielist", "mintimerlist", "minepglist", "rcu_full_view", "epgsearch_full", "epgsearch_only_bq", "nownext_columns", "responsive_enabled", "showpicons", "showchanneldetails", "showiptvchannelsinselection", "screenshotchannelname", "showallpackages", "showepghistory", "compacttimerlist", "zapstream", "screenshot_high_resolution", "screenshot_refresh_auto"):
+			if sarg in ("minmovielist", "mintimerlist", "minepglist", "rcu_full_view", "epgsearch_full", "epgsearch_only_bq", "nownext_columns", "responsive_enabled", "showpicons", "showchanneldetails", "showiptvchannelsinselection", "screenshotchannelname", "showallpackages", "showepghistory", "compacttimerlist", "compactepglist", "zapstream", "screenshot_high_resolution", "screenshot_refresh_auto"):
 				val = request.args[arg][0] in (b"true", b"1")
 				configitem = getattr(comp_config.OpenWebif.webcache, sarg)
 				configitem.value = val
 				configitem.save()
 				return {"result": True}
-			elif sarg in ("moviedb", "smallremote", "theme"):
+			elif sarg in ("moviedb", "smallremote", "theme", "transcoding_mode"):
 				try:
 					configitem = getattr(comp_config.OpenWebif.webcache, sarg)
 					configitem.value = getUrlArg(request, sarg)
@@ -2569,7 +2674,7 @@ class WebController(BaseController):
 		pp = getPicon(sref, path, False)
 		if pp:
 			if path is None:
-				path = PICON_PATH
+				path = globalVars.piconPath
 			link = pp
 			pp = pp.replace("/picon/", path)
 		if json == 'true':

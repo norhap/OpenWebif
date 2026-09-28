@@ -1898,6 +1898,13 @@ class WebController(BaseController):
 					mnow["duration_sec"] = movie.getDuration()
 					mnow["remaining"] = movie.getDuration()
 					mnow["id"] = movie.getEventId()
+					seek = service and service.seek()
+					if seek:
+						position = seek.getPlayPosition()
+						if not position[0]:
+							position_sec = position[1] // 90000
+							mnow["position"] = position_sec
+							mnow["remaining"] = max(0, mnow["duration_sec"] - position_sec)
 			except Exception:  # nosec # noqa: E722
 				mnow = eventnow
 		elif mnow["sref"] == '':
@@ -2007,6 +2014,7 @@ class WebController(BaseController):
 			if ref:
 				name = getUrlArg(request, "name", "")
 				zapService(self.session, ref, name, stream=True)
+		request.setHeader("Content-Disposition", 'attachment;filename="stream.m3u"')
 		return getStream(self.session, request, "stream.m3u")
 
 	def P_tsm3u(self, request):
@@ -2027,6 +2035,7 @@ class WebController(BaseController):
 
 		"""
 		self.isCustom = True
+		request.setHeader("Content-Disposition", 'attachment;filename="ts.m3u"')
 		return getTS(self.session, request)
 
 	def P_videom3u(self, request):
@@ -2050,6 +2059,7 @@ class WebController(BaseController):
 
 		"""
 		self.isCustom = True
+		request.setHeader("Content-Disposition", 'attachment;filename="streamcurrent.m3u"')
 		return getStream(self.session, request, "streamcurrent.m3u")
 
 	def P_streamsubservices(self, request):
